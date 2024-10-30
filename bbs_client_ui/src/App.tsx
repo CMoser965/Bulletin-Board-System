@@ -96,7 +96,7 @@ const App = () => {
     const postsPerPage = 5;
 
     useEffect(() => {
-        const newClient = new BBSClient("ws://localhost:8080", handleNewMessage);
+        const newClient = new BBSClient("ws://localhost:8082", handleNewMessage);
         setClient(newClient);
         return () => newClient.closeConnection();
     }, []);
