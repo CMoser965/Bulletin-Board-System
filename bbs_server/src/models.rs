@@ -1,3 +1,5 @@
+// src/models.rs
+
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
 
@@ -12,4 +14,11 @@ pub struct Article {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ArticleList {
     pub articles: Vec<Article>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ServerResponse {
+    Success(Article),
+    Failure(String),
+    ArticleList(Vec<Article>),
 }

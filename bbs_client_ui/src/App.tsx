@@ -16,27 +16,35 @@ const ForumPost = ({ post, onReply, onSelect }) => {
 
     return (
         <div
-            onClick={() => onSelect(post)} // Select the post to show its replies
-            style={{ padding: "15px", border: "1px solid #ddd", borderRadius: "8px", marginBottom: "10px", cursor: "pointer" }}
+            onClick={() => onSelect(post)}
+            style={{
+                padding: "20px",
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                marginBottom: "15px",
+                backgroundColor: "#fff",
+                cursor: "pointer",
+                transition: "box-shadow 0.2s",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.12)",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 3px 6px rgba(0, 0, 0, 0.2)")}
+            onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.12)")}
         >
-            <h5 style={{ marginBottom: "5px" }}>{post.title || "Untitled Post"}</h5>
-            <p style={{ margin: "0 0 10px" }}>{post.content}</p>
-            <div style={{ fontSize: "0.85em", color: "gray", marginBottom: "10px" }}>
-                <p>ID: {post.id}</p>
-                {post.parent_id && <p>Reply to: {post.parent_id}</p>}
-            </div>
+            <h5 style={{ marginBottom: "5px", fontSize: "1.1em", color: "#333" }}>{post.title || "Untitled Post"}</h5>
+            <p style={{ margin: "0 0 15px", color: "#555" }}>{post.content}</p>
             <button
                 onClick={(e) => {
-                    e.stopPropagation(); // Prevent selecting the article when clicking "Reply"
+                    e.stopPropagation();
                     setShowReplyForm(!showReplyForm);
                 }}
                 style={{
                     backgroundColor: "#007bff",
-                    color: "gray",
+                    color: "white",
                     border: "none",
                     borderRadius: "5px",
                     padding: "5px 10px",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    fontSize: "0.9em",
                 }}
             >
                 Reply
@@ -53,17 +61,21 @@ const ForumPost = ({ post, onReply, onSelect }) => {
                             marginBottom: "10px",
                             padding: "8px",
                             borderRadius: "5px",
-                            border: "1px solid #ccc"
+                            border: "1px solid #ccc",
+                            fontSize: "0.9em",
                         }}
                     />
-                    <button onClick={handleReply} style={{
-                        backgroundColor: "#36454F",
-                        color: "gray",
-                        border: "none",
-                        borderRadius: "5px",
-                        padding: "5px 10px",
-                        cursor: "pointer"
-                    }}>
+                    <button
+                        onClick={handleReply}
+                        style={{
+                            backgroundColor: "#007bff",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "5px",
+                            padding: "5px 10px",
+                            cursor: "pointer",
+                        }}
+                    >
                         Submit Reply
                     </button>
                 </div>
@@ -73,31 +85,25 @@ const ForumPost = ({ post, onReply, onSelect }) => {
 };
 
 // Main App Component
-const App: React.FC = () => {
-    const [client, setClient] = useState<BBSClient | null>(null);
-    const [messages, setMessages] = useState<any[]>([]);
+const App = () => {
+    const [client, setClient] = useState(null);
+    const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
-    const [selectedArticle, setSelectedArticle] = useState<any | null>(null); // Track selected article for pane
+    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedArticle, setSelectedArticle] = useState(null); // Track selected article for detail view
+    const [showReplyForm, setShowReplyForm] = useState(false); // Toggle reply form in detail view
+    const [replyContent, setReplyContent] = useState(""); // Reply content in detail view
+    const postsPerPage = 5;
 
     useEffect(() => {
         const newClient = new BBSClient("ws://localhost:8080", handleNewMessage);
         setClient(newClient);
-
         return () => newClient.closeConnection();
     }, []);
 
     const handleNewMessage = (message: string) => {
-        try {
-            const parsedMessage = JSON.parse(message);
-
-            if (Array.isArray(parsedMessage)) {
-                setMessages(parsedMessage);
-            } else {
-                setMessages((prevMessages) => [...prevMessages, parsedMessage]);
-            }
-        } catch (error) {
-            console.error("Failed to parse message:", message);
-        }
+        const parsedMessage = JSON.parse(message);
+        setMessages((prevMessages) => Array.isArray(parsedMessage) ? parsedMessage : [...prevMessages, parsedMessage]);
     };
 
     const handlePost = () => {
@@ -111,84 +117,127 @@ const App: React.FC = () => {
         client?.readArticles();
     };
 
-    const handleReply = (parentId: string, content: string) => {
-        if (client) {
-            client.postArticle(`Reply to ${parentId}: ${content}`);
-        }
+    const handleReply = (parentId: any, content: string) => {
+        client.postArticle(`Reply to ${parentId}: ${content}`);
+        setReplyContent(""); // Reset reply form in detail view
+        setShowReplyForm(false);
     };
 
-    // Close the selected article pane
+    const indexOfLastPost = currentPage * postsPerPage;
+    const indexOfFirstPost = indexOfLastPost - postsPerPage;
+    const currentPosts = messages.slice(indexOfFirstPost, indexOfLastPost);
+
     const closeArticlePane = () => {
         setSelectedArticle(null);
+        setShowReplyForm(false);
     };
 
     return (
-        <div style={{ padding: "20px", fontFamily: "Arial, sans-serif", maxWidth: "800px", margin: "0 auto" }}>
-            <h2>Forum</h2>
-            <div style={{ marginBottom: "20px" }}>
-                <textarea
-                    placeholder="Start a new discussion..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    rows={4}
-                    style={{
-                        width: "100%",
-                        marginBottom: "10px",
-                        padding: "10px",
-                        borderRadius: "5px",
-                        border: "1px solid #ccc"
-                    }}
-                />
-                <button
-                    onClick={handlePost}
-                    style={{
-                        padding: "10px 20px",
-                        backgroundColor: "#007bff",
-                        color: "gray",
-                        border: "none",
-                        borderRadius: "5px",
-                        cursor: "pointer",
-                        marginRight: "10px"
-                    }}
-                >
-                    Post
-                </button>
-                <button
-                    onClick={handleRead}
-                    style={{
-                        padding: "10px 20px",
-                        backgroundColor: "#36454F",
-                        color: "gray",
-                        border: "none",
-                        borderRadius: "5px",
-                        cursor: "pointer"
-                    }}
-                >
-                    Refresh
-                </button>
-            </div>
+        <div style={{ padding: "20px", fontFamily: "Arial, sans-serif", maxWidth: "1000px", margin: "10 auto", color: "#333" }}>
+            <h2 style={{ textAlign: "center", color: "#007bff", fontSize: "2em", marginBottom: "20px" }}>Bulletin Board System</h2>
 
             <div style={{ display: "flex" }}>
-                <div style={{ flex: 1, maxHeight: "600px", overflowY: "auto", border: "1px solid #ccc", padding: "10px", borderRadius: "5px", backgroundColor: "#36454F" }}>
-                    <h4>Discussions:</h4>
-                    {messages.filter((msg) => !msg.parent_id).length > 0 ? (
-                        messages.filter((msg) => !msg.parent_id).map((msg, index) => (
-                            <ForumPost key={index} post={msg} onReply={handleReply} onSelect={setSelectedArticle} />
-                        ))
-                    ) : (
-                        <p>No posts yet. Start a new discussion!</p>
-                    )}
+                <div style={{ flex: 1, paddingRight: "20px" }}>
+                    <textarea
+                        placeholder="Start a new discussion..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        rows={4}
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            borderRadius: "5px",
+                            border: "1px solid #ccc",
+                            marginBottom: "10px",
+                            fontSize: "1em",
+                            resize: "vertical",
+                        }}
+                    />
+                    <button
+                        onClick={handlePost}
+                        style={{
+                            padding: "10px 20px",
+                            backgroundColor: "#007bff",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "5px",
+                            cursor: "pointer",
+                            marginRight: "10px",
+                            fontSize: "1em",
+                        }}
+                    >
+                        Post
+                    </button>
+                    <button
+                        onClick={handleRead}
+                        style={{
+                            padding: "10px 20px",
+                            backgroundColor: "#28a745",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "5px",
+                            cursor: "pointer",
+                            fontSize: "1em",
+                        }}
+                    >
+                        Refresh
+                    </button>
+
+                    <div style={{ marginTop: "20px", maxHeight: "500px", overflowY: "auto", border: "1px solid #ccc", borderRadius: "8px", backgroundColor: "#f9f9f9", padding: "15px" }}>
+                        <h4 style={{ color: "#333", fontSize: "1.2em" }}>Discussions:</h4>
+                        {currentPosts.length > 0 ? (
+                            currentPosts.map((msg, index) => (
+                                <ForumPost key={index} post={msg} onReply={handleReply} onSelect={setSelectedArticle} />
+                            ))
+                        ) : (
+                            <p style={{ color: "#888", textAlign: "center" }}>No posts yet. Start a new discussion!</p>
+                        )}
+                    </div>
+
+                    <div style={{ textAlign: "center", marginTop: "20px" }}>
+                        <button
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            style={{
+                                padding: "8px 16px",
+                                backgroundColor: currentPage === 1 ? "#ddd" : "#007bff",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "5px",
+                                cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                                marginRight: "5px",
+                            }}
+                        >
+                            Previous
+                        </button>
+                        <span style={{ fontSize: "1em", color: "#555" }}>Page {currentPage}</span>
+                        <button
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={indexOfLastPost >= messages.length}
+                            style={{
+                                padding: "8px 16px",
+                                backgroundColor: indexOfLastPost >= messages.length ? "#ddd" : "#007bff",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "5px",
+                                cursor: indexOfLastPost >= messages.length ? "not-allowed" : "pointer",
+                                marginLeft: "5px",
+                            }}
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
 
                 {selectedArticle && (
                     <div style={{
                         width: "400px",
-                        marginLeft: "20px",
-                        padding: "15px",
+                        padding: "20px",
                         border: "1px solid #ddd",
                         borderRadius: "8px",
-                        backgroundColor: "#36454F",
-                        position: "relative"
+                        backgroundColor: "#f0f0f0",
+                        marginLeft: "20px",
+                        position: "relative",
                     }}>
                         <button onClick={closeArticlePane} style={{
                             position: "absolute",
@@ -197,21 +246,68 @@ const App: React.FC = () => {
                             background: "none",
                             border: "none",
                             fontSize: "1.2em",
-                            cursor: "pointer"
+                            cursor: "pointer",
                         }}>×</button>
-                        <h4>{selectedArticle.title || "Untitled Post"}</h4>
-                        <p>{selectedArticle.content}</p>
-                        <div style={{ fontSize: "0.85em", color: "gray", marginBottom: "10px" }}>
+                        <h4 style={{ marginBottom: "10px", color: "#007bff" }}>{selectedArticle.title || "Untitled Post"}</h4>
+                        <p style={{ marginBottom: "10px", color: "#555" }}>{selectedArticle.content}</p>
+                        <div style={{ fontSize: "0.85em", color: "#888", marginBottom: "20px" }}>
                             <p>ID: {selectedArticle.id}</p>
                         </div>
-                        <h5>Replies:</h5>
+                        <button
+                            onClick={() => setShowReplyForm(!showReplyForm)}
+                            style={{
+                                backgroundColor: "#007bff",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "5px",
+                                padding: "5px 10px",
+                                cursor: "pointer",
+                                fontSize: "0.9em",
+                            }}
+                        >
+                            Reply
+                        </button>
+
+                        {showReplyForm && (
+                            <div style={{ marginTop: "10px" }}>
+                                <textarea
+                                    placeholder="Write your reply..."
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                    rows={3}
+                                    style={{
+                                        width: "100%",
+                                        marginBottom: "10px",
+                                        padding: "8px",
+                                        borderRadius: "5px",
+                                        border: "1px solid #ccc",
+                                        fontSize: "0.9em",
+                                    }}
+                                />
+                                <button
+                                    onClick={() => handleReply(selectedArticle.id, replyContent)}
+                                    style={{
+                                        backgroundColor: "#007bff",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "5px",
+                                        padding: "5px 10px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Submit Reply
+                                </button>
+                            </div>
+                        )}
+
+                        <h5 style={{ color: "#333", marginTop: "20px" }}>Replies:</h5>
                         {messages
                             .filter((msg) => msg.parent_id === selectedArticle.id)
                             .map((reply, index) => (
-                                <div key={index} style={{ marginBottom: "10px", padding: "10px", backgroundColor: "#36454F", borderRadius: "5px", border: "1px solid #ccc" }}>
+                                <div key={index} style={{ marginBottom: "10px", padding: "10px", backgroundColor: "#fff", borderRadius: "5px", border: "1px solid #ccc" }}>
                                     <p><strong>{reply.title || "Reply"}</strong></p>
                                     <p>{reply.content}</p>
-                                    <div style={{ fontSize: "0.75em", color: "gray" }}>ID: {reply.id}</div>
+                                    <div style={{ fontSize: "0.75em", color: "#888" }}>ID: {reply.id}</div>
                                 </div>
                             ))}
                     </div>
